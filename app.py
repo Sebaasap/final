@@ -5,8 +5,8 @@ import numpy as np
 from PIL import Image
 import os
 
-st.set_page_config(page_title="Análisis de variables y desempeño", layout="wide")
-st.title("Análisis de variables y desempeño")
+st.set_page_config(page_title="Análisis de variables económicas", layout="wide")
+st.title("Análisis de variables económicas")
 
 
 import nbformat
