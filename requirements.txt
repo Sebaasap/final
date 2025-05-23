@@ -1,0 +1,9 @@
+streamlit
+pandas
+plotly
+Pillow
+matplotlib
+numpy
+Image
+os
+
