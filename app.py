@@ -5,68 +5,59 @@ import numpy as np
 from PIL import Image
 import os
 
-st.set_page_config(page_title="Análisis de variables económicas", layout="wide")
-st.title("Análisis de variables económicas")
-
-
-import nbformat
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
+import plotly.express as px
 from wordcloud import WordCloud
 
-def mostrar_nube_de_palabras():
-    try:
-        text_contents = ""
-        for file_name in ["trabajo_final.ipynb", "proyecto_final.ipynb"]:
-            with open(file_name, "r", encoding="utf-8") as f:
-                nb = nbformat.read(f, as_version=4)
-                for cell in nb.cells:
-                    if cell.cell_type in ["markdown", "code"]:
-                        text_contents += cell.source + "\n"
+dp = pd.read_csv('desempleo(cr).csv')
+tmr = pd.read_csv('tasa_cambio(cr).csv')
+pib = pd.read_csv('pib(cr).csv')
+cp = pd.read_csv('colcap(cr).csv')
+inf = pd.read_csv('inflacion(cr).csv')
 
-        wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text_contents)
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.imshow(wordcloud, interpolation="bilinear")
-        ax.axis("off")
-        st.pyplot(fig)
-    except Exception as e:
-        st.warning(f"No se pudo generar la nube de palabras: {e}")
+# Días y tendencias
+degree = 3
 
+dp['fecha'] = pd.to_datetime(dp['fecha'])
+dp = dp.sort_values('fecha')
+dp['dias'] = (dp['fecha'] - dp['fecha'].min()).dt.days
+coefs_dp = np.polyfit(dp['dias'], dp['tasa_desempleo'], degree)
+poly_dp = np.poly1d(coefs_dp)
+dp['tendencia'] = poly_dp(dp['dias'])
 
+pib['fecha'] = pd.to_datetime(pib['fecha'])
+pib = pib.sort_values('fecha')
+pib['dias'] = (pib['fecha'] - pib['fecha'].min()).dt.days
+coefs_pib = np.polyfit(pib['dias'], pib['pib_trimestral'], degree)
+poly_pib = np.poly1d(coefs_pib)
+pib['tendencia'] = poly_pib(pib['dias'])
 
+tmr['fecha'] = pd.to_datetime(tmr['fecha'])
+tmr = tmr.sort_values('fecha')
+tmr['dias'] = (tmr['fecha'] - tmr['fecha'].min()).dt.days
+coefs_tmr = np.polyfit(tmr['dias'], tmr['tasa_cambio(trm)'], degree)
+poly_tmr = np.poly1d(coefs_tmr)
+tmr['tendencia'] = poly_tmr(tmr['dias'])
 
+cp['fecha'] = pd.to_datetime(cp['fecha'])
+cp = cp.sort_values('fecha')
+cp['dias'] = (cp['fecha'] - cp['fecha'].min()).dt.days
+coefs_cp = np.polyfit(cp['dias'], cp['colcap'], degree)
+poly_cp = np.poly1d(coefs_cp)
+cp['tendencia'] = poly_cp(cp['dias'])
 
+inf['fecha'] = pd.to_datetime(inf['fecha'])
+inf = inf.sort_values('fecha')
+inf['dias'] = (inf['fecha'] - inf['fecha'].min()).dt.days
+coefs_inf = np.polyfit(inf['dias'], inf['inflacion'], degree)
+poly_inf = np.poly1d(coefs_inf)
+inf['tendencia'] = poly_inf(inf['dias'])
 
-# Función para graficar líneas con tendencia y anotaciones
-def graficar_linea_con_tendencia(df, titulo, columna_valor, columna_fecha="fecha"):
-    try:
-        df[columna_fecha] = pd.to_datetime(df[columna_fecha])
-        df = df.sort_values(by=columna_fecha)
-        x = np.arange(len(df))
-        y = df[columna_valor].values
-
-        z = np.polyfit(x, y, 2)
-        p = np.poly1d(z)
-
-        fig, ax = plt.subplots()
-        ax.plot(df[columna_fecha], y, label=columna_valor, linewidth=2)
-        ax.plot(df[columna_fecha], p(x), 'r--', label='Tendencia')
-
-        # Líneas de cambio presidencial
-        ax.axvline(pd.to_datetime('2010-08-07'), color='black', linestyle='--')
-        ax.axvline(pd.to_datetime('2018-08-07'), color='black', linestyle='--')
-        ax.axvline(pd.to_datetime('2022-08-07'), color='black', linestyle='--')
-
-        ax.text(pd.to_datetime('2012-01-01'), max(y)*0.8, "P.Santos")
-        ax.text(pd.to_datetime('2019-01-01'), max(y)*0.8, "P.Duque")
-        ax.text(pd.to_datetime('2023-01-01'), max(y)*0.8, "P.Petro")
-
-        ax.set_xlabel("Fecha")
-        ax.set_ylabel(columna_valor)
-        ax.set_title(titulo)
-        ax.legend()
-        st.pyplot(fig)
-    except Exception as e:
-        st.error(f"No se pudo generar el gráfico: {e}")
-
+st.title("Análisis variables económicas")
 # Tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Desempleo", "Inflación", "PIB", "TRM", "Tasa de Cambio"])
 
@@ -75,9 +66,26 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Desempleo", "Inflación", "PIB", "TRM",
 with tab1:
     st.header("Desempleo")
     try:
-        df = pd.read_csv("desempleo(cr).csv")
-        st.dataframe(df)
-        graficar_linea_con_tendencia(df, "Evolución del Desempleo", "tasa_desempleo")
+st.subheader("Análisis Desempleo")
+    fig = px.line(dp, x='fecha', y='tasa_desempleo', title='Tendencia del desempleo en el tiempo')
+    fig.add_trace(px.line(dp, x='fecha', y='tendencia').data[0])  
+    fig.data[1].line.dash = 'dash'  
+    fig.data[1].line.color = 'red'  
+    fig.data[1].name = 'Tendencia'  
+    fig.add_vline(x='2018-08-07', line_dash="dash", line_color="gray")
+    fig.add_vline(x='2022-08-07', line_dash="dash", line_color="gray")
+    fig.add_annotation(x='2014-08-07', y=14, text="P.Santos", showarrow=False, font=dict(size=16))
+    fig.add_annotation(x='2019-08-07', y=18, text="P.Duque", showarrow=False, font=dict(size=16))
+    fig.add_annotation(x='2023-08-07', y=16, text="P.Petro", showarrow=False, font=dict(size=16))
+    fig.update_layout(
+        xaxis_title='Fecha',
+        yaxis_title='Tasa de Desempleo %', 
+        xaxis_tickangle=45,
+        template='plotly_white',
+        width=1000,
+        height=500
+    )
+    st.plotly_chart(fig)
     except Exception as e:
         st.error(f"No se pudo cargar el gráfico: {e}")
         
